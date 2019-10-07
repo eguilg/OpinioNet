@@ -75,61 +75,61 @@ def gen_submit(ret, raw):
 		cur_idx += 1
 	return result
 
-
+import json
+from config import PRETRAINED_MODELS
 if __name__ == '__main__':
-	THRESH = 0.10
 	SAVING_DIR = '../models/'
-	MODELS = [
-		'roberta_cv0',
-		'roberta_cv1',
-		'roberta_cv2',
-		'roberta_cv3',
-		'roberta_cv4',
-		# 'ernie_cv0',
-		'ernie_cv1',
-		'ernie_cv2',
-		'ernie_cv3',
-		'ernie_cv4',
-		'wwm_cv0',
-		'wwm_cv1',
-		'wwm_cv2',
-		'wwm_cv3',
-		'wwm_cv4',
+	THRESH_DIR = '../models/thresh_dict.json'
+	with open(THRESH_DIR, 'r', encoding='utf-8') as f:
+		thresh_dict = json.load(f)
 
-	]
-	THRESHS = [0.5000000000000001, 0.3500000000000001, 0.5500000000000002, 0.5000000000000001, 0.45000000000000007] \
-	 		+ [0.7500000000000002, 0.5000000000000001, 0.7000000000000002, 0.7500000000000002] \
-			+ [0.45000000000000007, 0.6000000000000002, 0.3500000000000001, 0.5000000000000001, 0.6000000000000002]
-	# 0.6500000000000001,
-	MODELS = list(zip(MODELS, THRESHS))
+	WEIGHT_NAMES, MODEL_NAMES, THRESHS = [], [], []
+	for k, v in thresh_dict.items():
+		WEIGHT_NAMES.append(k)
+		MODEL_NAMES.append(v['name'])
+		THRESHS.append(v['thresh'])
 
-	tokenizer = BertTokenizer.from_pretrained('/home/zydq/.torch/models/bert/chinese_roberta_wwm_ext_pytorch',
-											  do_lower_case=True)
+	MODELS = list(zip(WEIGHT_NAMES, MODEL_NAMES, THRESHS))
+	tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODELS['roberta']['path'], do_lower_case=True)
 	test_dataset = ReviewDataset('../data/TEST/Test_reviews.csv', None, tokenizer, 'laptop')
 	test_loader = DataLoader(test_dataset, 12, collate_fn=test_dataset.batchify, shuffle=False, num_workers=5)
 	ret = None
-	for name, thresh in MODELS:
-		if "roberta" in name:
-			base_model = 'chinese_roberta_wwm_ext_pytorch'
-		elif 'ernie' in name:
-			base_model = 'ERNIE'
-		else:
-			base_model = 'chinese_wwm_ext_pytorch'
-		tokenizer = BertTokenizer.from_pretrained('/home/zydq/.torch/models/bert/' + base_model,
-												  do_lower_case=True)
+	num_model = 0
+	for weight_name, model_name, thresh in MODELS:
+		if not osp.isfile('../models/' + weight_name):
+			continue
+		num_model += 1
+		tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODELS[model_name]['path'], do_lower_case=True)
 		test_dataset = ReviewDataset('../data/TEST/Test_reviews.csv', None, tokenizer, 'laptop')
 		test_loader = DataLoader(test_dataset, 12, collate_fn=test_dataset.batchify, shuffle=False, num_workers=5)
-		model_path = osp.join(SAVING_DIR, name)
-		model = OpinioNet.from_pretrained('/home/zydq/.torch/models/bert/' + base_model)
-		model.load_state_dict(torch.load(model_path))
+		model = OpinioNet.from_pretrained(PRETRAINED_MODELS[model_name]['path'])
+		model.load_state_dict(torch.load('../models/' + weight_name))
 		model.cuda()
 		ret = accum_result(ret, eval_epoch(model, test_loader, thresh))
 		del model
-	ret = average_result(ret, len(MODELS))
+	ret = average_result(ret, num_model)
+	# import numpy as np
+	# import copy
+	#
+	# min_dis = float('inf')
+	# threshs = list(np.arange(0.1, 0.9, 0.05))
+	# result = None
+	# target_num = len(test_dataset) * 2456 / 871
+	# raw = [s[0][0] for s in test_dataset.samples]
+	# for th in threshs:
+	# 	ret_cp = copy.deepcopy(ret)
+	# 	ret_cp = OpinioNet.nms_filter(ret_cp, th)
+	# 	cur_result = gen_submit(ret_cp, raw)
+	#
+	# 	if abs(cur_result.shape[0] - target_num) < min_dis:
+	# 		min_dis = abs(cur_result.shape[0] - target_num)
+	# 		result = cur_result
+
 	ret = OpinioNet.nms_filter(ret, 0.3)
 	raw = [s[0][0] for s in test_dataset.samples]
 	result = gen_submit(ret, raw)
-	import time
 
-	result.to_csv('../submit/ensemble-' + str(round(time.time())) + '.csv', header=False, index=False)
+	# import time
+	# result.to_csv('../submit/ensemble-' + str(round(time.time())) + '.csv', header=False, index=False)
+	result.to_csv('../submit/Result.csv', header=False, index=False)
 	print(len(result['id'].unique()), result.shape[0])

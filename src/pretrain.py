@@ -56,9 +56,9 @@ def train_epoch(model, makeup_loader, corpus_loader, optimizer, scheduler=None):
 		loss = model.foward_LM(corpus_ids, corpus_attn, lm_label)
 		optimizer.zero_grad()
 		loss.backward()
+		optimizer.step()
 		if scheduler:
 			scheduler.step()
-		optimizer.step()
 		cum_lm_loss += loss.data.cpu().numpy() * len(corpus_ids)
 		total_lm_sample += len(corpus_ids)
 		del corpus_ids, corpus_attn, lm_label, loss
@@ -78,9 +78,9 @@ def train_epoch(model, makeup_loader, corpus_loader, optimizer, scheduler=None):
 
 		optimizer.zero_grad()
 		loss.backward()
+		optimizer.step()
 		if scheduler:
 			scheduler.step()
-		optimizer.step()
 
 		makeup_pred = model.gen_candidates(makeup_probs)
 		makeup_pred = model.nms_filter(makeup_pred, 0.1)
@@ -165,26 +165,23 @@ def eval_epoch(model, dataloader, type='makeup'):
 
 	return total_loss, best_f1, best_pr, best_rc, best_thresh
 
-
+import argparse
+from config import PRETRAINED_MODELS
 if __name__ == '__main__':
-	EP = 100
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--base_model', type=str, default='roberta')
+	parser.add_argument('--bs', type=int, default=12)
+	args = parser.parse_args()
+
+	EP = 25
+	model_config = PRETRAINED_MODELS[args.base_model]
 	SAVING_DIR = '../models/'
-	base_model_name = 'wwm'
-	if base_model_name == 'ernie':
-		base_model = 'ERNIE'
-	elif base_model_name == 'roberta':
-		base_model = 'chinese_roberta_wwm_ext_pytorch'
-	else:
-		base_model = 'chinese_wwm_ext_pytorch'
-	tokenizer = BertTokenizer.from_pretrained('/home/zydq/.torch/models/bert/' + base_model,
-											  do_lower_case=True)
 
-	makeup_train_loader, makeup_val_loader, corpus_loader = \
-	get_pretrain_loaders(tokenizer, batch_size=12)
-
-	model = OpinioNet.from_pretrained('/home/zydq/.torch/models/bert/' + base_model)
+	tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
+	makeup_train_loader, makeup_val_loader, corpus_loader = get_pretrain_loaders(tokenizer, batch_size=args.bs)
+	model = OpinioNet.from_pretrained(model_config['path'])
 	model.cuda()
-	optimizer = Adam(model.parameters(), lr=6e-6)
+	optimizer = Adam(model.parameters(), lr=model_config['lr'])
 	scheduler = GradualWarmupScheduler(optimizer, total_epoch=2*max(len(makeup_train_loader), len(corpus_loader)))
 	best_val_f1 = 0
 	best_val_loss = float('inf')
@@ -203,11 +200,11 @@ if __name__ == '__main__':
 		if val_f1 > best_val_f1:
 			best_val_f1 = val_f1
 			if best_val_f1 >= 0.75:
-				model_name_args = ['ep' + str(e), 'f1' + str(round(val_f1, 5))]
-				model_name = '-'.join(model_name_args) + '.pth'
-				saving_dir = osp.join(SAVING_DIR, 'pretrained_' + base_model_name)
+				saving_dir = osp.join(SAVING_DIR, 'pretrained_' + model_config['name'])
 				torch.save(model.state_dict(), saving_dir)
 				print('saved best model to %s' % saving_dir)
 
 		print('best loss %.5f' % best_val_loss)
 		print('best f1 %.5f' % best_val_f1)
+		if best_val_f1 >= 0.82:
+			break

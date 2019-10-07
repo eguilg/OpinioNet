@@ -305,6 +305,32 @@ def get_data_loaders_cv(rv_path, lb_path, tokenizer, batch_size, type='makeup', 
 	return cv_loaders
 
 
+def get_aug_data_loaders_cv(rv_path, lb_path, tokenizer, batch_size, type='makeup', folds=5):
+	full_dataset = ReviewDataset(rv_path, lb_path, tokenizer, type)
+
+	kf = KFold(n_splits=folds, shuffle=True, random_state=502)
+	org_size = len(full_dataset)//4
+	folds = kf.split(range(org_size))
+	cv_loaders = []
+	for train_idx, val_idx in folds:
+		train_samples, val_samples = [], []
+		for idx in train_idx:
+			for i in range(4):
+				train_samples.append(full_dataset.samples[idx+org_size*i])
+		for idx in val_idx:
+			# for i in range(4):
+			val_samples.append(full_dataset.samples[idx])
+
+
+		train_loader = DataLoader(train_samples, batch_size,
+								  collate_fn=full_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
+		val_loader = DataLoader(val_samples, batch_size,
+								collate_fn=full_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
+		cv_loaders.append((train_loader, val_loader))
+
+	return cv_loaders
+
+
 def get_data_loaders_round2(tokenizer, batch_size, val_split=0.15):
 	makeup_rv1 = ReviewDataset('../data/TRAIN/Train_reviews.csv', '../data/TRAIN/Train_labels.csv', tokenizer)
 	makeup_rv2 = ReviewDataset('../data/TRAIN/Train_makeup_reviews.csv', '../data/TRAIN/Train_makeup_labels.csv', tokenizer)

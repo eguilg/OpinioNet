@@ -1,5 +1,5 @@
 from pytorch_pretrained_bert import BertTokenizer
-from dataset import ReviewDataset, get_data_loaders_cv, get_pretrain_loaders
+from dataset import ReviewDataset, get_data_loaders_cv, get_pretrain_loaders, get_aug_data_loaders_cv
 from lr_scheduler import GradualWarmupScheduler, ReduceLROnPlateau
 from model import OpinioNet
 
@@ -47,9 +47,10 @@ def train_epoch(model, dataloader, optimizer, scheduler=None, type='makeup'):
 
 		optimizer.zero_grad()
 		loss.backward()
+		optimizer.step()
 		if scheduler:
 			scheduler.step()
-		optimizer.step()
+
 
 		pred_result = model.gen_candidates(probs)
 		pred_result = model.nms_filter(pred_result, 0.1)
@@ -123,29 +124,43 @@ def eval_epoch(model, dataloader, type='makeup'):
 
 	return total_loss, best_f1, best_pr, best_rc, best_thresh
 
-
+import json
+import argparse
+from config import PRETRAINED_MODELS
 if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--base_model', type=str, default='roberta')
+	parser.add_argument('--bs', type=int, default=12)
+	args = parser.parse_args()
+
 	EP = 100
 	FOLDS = 5
 	SAVING_DIR = '../models/'
-	tokenizer = BertTokenizer.from_pretrained('/home/zydq/.torch/models/bert/chinese_wwm_ext_pytorch',
-											  do_lower_case=True)
+	THRESH_DIR = '../models/thresh_dict.json'
+	model_config = PRETRAINED_MODELS[args.base_model]
+	print(model_config)
+
+	if osp.isfile(THRESH_DIR):
+		with open(THRESH_DIR, 'r', encoding='utf-8') as f:
+			thresh_dict = json.load(f)
+	else:
+		thresh_dict = {}
+
+	tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
 	cv_loaders = get_data_loaders_cv(rv_path='../data/TRAIN/Train_laptop_reviews.csv',
 									 lb_path='../data/TRAIN/Train_laptop_labels.csv',
 									 tokenizer=tokenizer,
-									 batch_size=12,
+									 batch_size=args.bs,
 									 type='laptop',
 									 folds=FOLDS)
-	makeup_train_loader, makeup_val_loader, corpus_loader = \
-		get_pretrain_loaders(tokenizer, batch_size=12)
 
 	BEST_THRESHS = [0.1] * FOLDS
 	BEST_F1 = [0] * FOLDS
 	for cv_idx, (train_loader, val_loader) in enumerate(cv_loaders):
-		model = OpinioNet.from_pretrained('/home/zydq/.torch/models/bert/chinese_wwm_ext_pytorch')
-		model.load_state_dict(torch.load('../models/pretrained_wwm'))
+		model = OpinioNet.from_pretrained(model_config['path'])
+		model.load_state_dict(torch.load('../models/pretrained_'+model_config['name']))
 		model.cuda()
-		optimizer = Adam(model.parameters(), lr=6e-6)
+		optimizer = Adam(model.parameters(), lr=model_config['lr'])
 		scheduler = GradualWarmupScheduler(optimizer, total_epoch=10*len(train_loader))
 		best_val_f1 = 0
 		best_val_loss = float('inf')
@@ -160,17 +175,24 @@ if __name__ == '__main__':
 			val_loss, val_f1, val_pr, val_rc, best_th = eval_epoch(model, val_loader, type='laptop')
 			print("val: loss %.5f, f1 %.5f, pr %.5f, rc %.5f, thresh %.2f" % (val_loss, val_f1, val_pr, val_rc, best_th))
 
-
 			if val_loss < best_val_loss:
 				best_val_loss = val_loss
 			if val_f1 > best_val_f1:
 				best_val_f1 = val_f1
 				if val_f1 >= 0.75:
-					saving_dir = osp.join(SAVING_DIR, 'wwm_cv' + str(cv_idx))
+					saving_name = model_config['name']+'_cv' + str(cv_idx)
+					saving_dir = osp.join(SAVING_DIR, saving_name)
 					torch.save(model.state_dict(), saving_dir)
 					print('saved best model to %s' % saving_dir)
 					BEST_THRESHS[cv_idx] = best_th
 					BEST_F1[cv_idx] = best_val_f1
+					thresh_dict[saving_name] = {
+						'name': model_config['name'],
+						'thresh': best_th,
+						'f1': best_val_f1,
+					}
+					with open(THRESH_DIR, 'w', encoding='utf-8') as f:
+						json.dump(thresh_dict, f)
 
 			print('best loss %.5f' % best_val_loss)
 			print('best f1 %.5f' % best_val_f1)
@@ -178,5 +200,4 @@ if __name__ == '__main__':
 		del model, optimizer, scheduler
 	print(BEST_THRESHS)
 	print(BEST_F1)
-#[0.5000000000000001, 0.3500000000000001, 0.5500000000000002, 0.5000000000000001, 0.45000000000000007]
-#[0.7924528301886792, 0.8329896907216495, 0.8320855614973262, 0.7900207900207901, 0.8203592814371258]
+
