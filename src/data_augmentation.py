@@ -8,13 +8,9 @@ import random
 import numpy as np
 from tqdm import tqdm
 
-if __name__ == '__main__':
+
+def data_augment(reviews_df, labels_df, epochs=5):
   POLARITY_DICT = 'polarity_dict'
-
-  reviews_df = pd.read_csv('../data/TRAIN/Train_laptop_reviews.csv', encoding='utf-8')
-  labels_df = pd.read_csv('../data/TRAIN/Train_laptop_labels.csv', encoding='utf-8')
-  epochs = 5  # 控制aug的倍数, 建议取<=5的正整数
-
   cate_dict = dict()
   for index, row in labels_df.iterrows():
     cate = row['Categories']
@@ -22,7 +18,7 @@ if __name__ == '__main__':
     opinion, polarity = row['OpinionTerms'], row['Polarities']
 
     if cate not in cate_dict:
-      cate_dict[cate] = {'polarity_dict': dict()}
+      cate_dict[cate] = {POLARITY_DICT: dict()}
     if polarity not in cate_dict[cate][POLARITY_DICT]:
       cate_dict[cate][POLARITY_DICT][polarity] = set()
     cate_dict[cate][POLARITY_DICT][polarity].add((aspect, opinion))
@@ -126,18 +122,15 @@ if __name__ == '__main__':
           new_reviews_df.loc[global_review_id] = [global_review_id, new_review]
           global_review_id += 1
 
-          ## region print_results, 肉眼观察用
-          # print('raw review:', review)
-          # print('new review:', new_review)
-          # for i, row in group.iterrows():
-          #   row = new_group.loc[i]
-          #   print(row['AspectTerms'], row['OpinionTerms'])
-          #   # print(row['A_start'], row['A_end'], row['O_start'], row['O_end'])
-          #   if row['A_start'].strip() != '':
-          #     print('Label A:', new_review[int(row['A_start']):int(row['A_end'])])
-          #   if row['O_start'].strip() != '':
-          #     print('Label O:', new_review[int(row['O_start']):int(row['O_end'])])
-          ## endregion
+  return new_reviews_df, new_labels_df
 
-    new_reviews_df.to_csv('../data/TRAIN/Train_laptop_aug_reviews.csv', index=False, encoding='utf-8')
-    new_labels_df.to_csv('../data/TRAIN/Train_laptop_aug_labels.csv', index=False, encoding='utf-8')
+
+if __name__ == '__main__':
+  reviews_df = pd.read_csv('../data/TRAIN/Train_laptop_reviews.csv', encoding='utf-8')
+  labels_df = pd.read_csv('../data/TRAIN/Train_laptop_labels.csv', encoding='utf-8')
+  epochs = 1  # 控制aug的倍数, 建议取<=5的正整数
+
+  new_reviews_df, new_labels_df = data_augment(reviews_df, labels_df, epochs)
+
+  new_reviews_df.to_csv('../data/TRAIN/Train_laptop_aug_reviews.csv', index=False, encoding='utf-8')
+  new_labels_df.to_csv('../data/TRAIN/Train_laptop_aug_labels.csv', index=False, encoding='utf-8')
