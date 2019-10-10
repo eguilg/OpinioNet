@@ -17,9 +17,52 @@ def focalBCE_with_logits(logits, target, gamma=2):
 	return loss.mean()
 
 
+def focalCE_with_logits(logit, target, ignore_index=-1, alpha=None, gamma=2, smooth=0.05):
+	num_classes = logit.size(1)
+	logit = F.softmax(logit, dim=1)
+	if not alpha:
+		alpha = 1.0
+	if logit.dim() > 2:
+		# N,C,d1,d2 -> N,C,m (m=d1*d2*...)
+		logit = logit.view(logit.size(0), logit.size(1), -1)
+		logit = logit.permute(0, 2, 1).contiguous()
+		logit = logit.view(-1, logit.size(-1))  # N*m, C
+
+	target = target.view(-1)  # N*m
+	logit = logit[target != ignore_index]
+	target = target[target != ignore_index]
+
+	target_onehot = F.one_hot(target, num_classes=num_classes).float()
+	if smooth:
+		target_onehot = torch.clamp(target_onehot, smooth, 1.0 - smooth)
+
+	pt = (target_onehot * logit).sum(1) + 1e-10
+	logpt = pt.log()
+	loss = -alpha * torch.pow((1 - pt), gamma) * logpt
+	loss = loss.mean()
+	return loss
+
+	#
+	# num_classes = logits.shape[1]
+	# loss = F.cross_entropy(logits, target, ignore_index=ignore_index, reduction='none')
+	# keep_mask = 1 - target.eq(ignore_index).float()
+	# probs = torch.softmax(logits, dim=1)
+	# target = target.masked_fill(target.eq(ignore_index), num_classes)
+	# target = F.one_hot(target, num_classes=num_classes+1).permute((0, 2, 1))[:, :-1, :].float()  # b c seq
+	#
+	# focal = (torch.abs(target - probs) ** gamma).max(1)[0] * keep_mask
+	# # focal /= (focal.sum(-1, keepdim=True) / keep_mask.sum(-1, keepdim=True))
+	# # print(focal)
+	# loss = (focal * loss).sum() / keep_mask.sum()
+	# return loss
+
+
 class OpinioNet(BertPreTrainedModel):
-	def __init__(self, config, hidden=100, gpu=True, dropout_prob=0.3, bert_cache_dir=None):
+	def __init__(self, config, hidden=100, gpu=True, dropout_prob=0.3, bert_cache_dir=None, version='large'):
 		super(OpinioNet, self).__init__(config)
+		self.version = version
+		if self.version == 'tiny':
+			self._tiny_version_init(hidden)
 
 		self.bert_cache_dir = bert_cache_dir
 
@@ -48,7 +91,6 @@ class OpinioNet(BertPreTrainedModel):
 		self.w_laptop = nn.Linear(self.bert_hidden_size, len(ID2LAPTOP) - len(ID2COMMON))
 		self.w_p = nn.Linear(self.bert_hidden_size, len(ID2P))
 
-
 		self.cls = BertOnlyMLMHead(config, self.bert.embeddings.word_embeddings.weight)
 
 		# self.w_num = nn.Linear(self.bert_hidden_size, 8)
@@ -63,6 +105,20 @@ class OpinioNet(BertPreTrainedModel):
 		if gpu:
 			self.cuda()
 
+	def _tiny_version_init(self, hidden=100):
+
+		self.w_as11t = nn.Linear(373, hidden)
+		self.w_as12t = nn.Linear(373, hidden)
+		self.w_ae11t = nn.Linear(373, hidden)
+		self.w_ae12t = nn.Linear(373, hidden)
+		self.w_os11t = nn.Linear(373, hidden)
+		self.w_os12t = nn.Linear(373, hidden)
+		self.w_oe11t = nn.Linear(373, hidden)
+		self.w_oe12t = nn.Linear(373, hidden)
+
+
+
+
 	def foward_LM(self, input_ids, attention_mask=None, masked_lm_labels=None):
 		sequence_output, _ = self.bert(input_ids, None, attention_mask,
 									   output_all_encoded_layers=False)
@@ -75,13 +131,8 @@ class OpinioNet(BertPreTrainedModel):
 		else:
 			return prediction_scores
 
-	def forward(self, input, type='laptop'):
-		rv_seq, att_mask, rv_mask = input
 
-		rv_seq, cls_emb = self.bert(input_ids=rv_seq, attention_mask=att_mask, output_all_encoded_layers=False)
-		# rv_seq = self.dropout(rv_seq)
-		# cls_emb = self.dropout(cls_emb)
-
+	def _forward_large(self, rv_seq, type='laptop'):
 		as_logits = self.w_as2(F.leaky_relu(self.w_as11(self.dropout(rv_seq)).unsqueeze(2)
 											+ self.w_as12(self.dropout(rv_seq)).unsqueeze(1))).squeeze(-1)
 
@@ -106,7 +157,54 @@ class OpinioNet(BertPreTrainedModel):
 		c_logits = torch.cat([common_logits, special_logits], dim=-1)
 		p_logits = self.w_p(self.dropout(rv_seq))
 
-		# num_logits = self.w_num(self.dropout(cls_emb))
+		return as_logits, ae_logits, os_logits, oe_logits, obj_logits, c_logits, p_logits
+
+	def _forward_tiny(self, rv_seq, type='laptop'):
+
+		obj_logits = rv_seq[:, :, 0]
+
+		common_logits = rv_seq[:, :, 1: 8]
+		if type == 'laptop':
+			special_logits = rv_seq[:, :, 8: 12]
+		else:
+			special_logits = rv_seq[:, :, 12: 18]
+		c_logits = torch.cat([common_logits, special_logits], dim=-1)
+		p_logits = rv_seq[:, :, 18: 21]
+
+		as_logits = self.w_as2(F.leaky_relu(self.w_as11t(self.dropout(rv_seq[:, :, 21: 394])).unsqueeze(2)
+											+ self.w_as12t(self.dropout(rv_seq[:, :, 21: 394])).unsqueeze(1))).squeeze(-1)
+
+		ae_logits = self.w_ae2(F.leaky_relu(self.w_ae11t(self.dropout(rv_seq[:, :, 21: 394])).unsqueeze(2)
+											+ self.w_ae12t(self.dropout(rv_seq[:, :, 21: 394])).unsqueeze(1))).squeeze(-1)
+
+		os_logits = self.w_os2(F.leaky_relu(self.w_os11t(self.dropout(rv_seq[:, :, 394: 767])).unsqueeze(2)
+											+ self.w_os12t(self.dropout(rv_seq[:, :, 394: 767])).unsqueeze(1))).squeeze(-1)
+
+		oe_logits = self.w_oe2(F.leaky_relu(self.w_oe11t(self.dropout(rv_seq[:, :, 394: 767])).unsqueeze(2)
+											+ self.w_oe12t(self.dropout(rv_seq[:, :, 394: 767])).unsqueeze(1))).squeeze(-1)
+
+		return as_logits, ae_logits, os_logits, oe_logits, obj_logits, c_logits, p_logits
+
+	def forward(self, input, type='laptop'):
+		rv_seq, att_mask, rv_mask = input
+
+		rv_seq, cls_emb = self.bert(input_ids=rv_seq, attention_mask=att_mask, output_all_encoded_layers=False)
+
+
+
+		as_logits, ae_logits, os_logits, oe_logits, obj_logits, c_logits, p_logits = self._forward_large(rv_seq, type)
+		if self.version == 'tiny':
+			as_logits_t, ae_logits_t, os_logits_t, oe_logits_t, obj_logits_t, c_logits_t, p_logits_t = self._forward_tiny(rv_seq, type)
+
+			as_logits += as_logits_t
+			ae_logits += ae_logits_t
+			os_logits += os_logits_t
+			oe_logits += oe_logits_t
+
+			obj_logits += obj_logits_t
+			c_logits += c_logits_t
+			p_logits += p_logits_t
+
 
 		rv_mask_with_cls = rv_mask.clone()
 		rv_mask_with_cls[:, 0] = 1
@@ -147,16 +245,23 @@ class OpinioNet(BertPreTrainedModel):
 		p_logits = p_logits.permute((0, 2, 1))
 
 		loss = 0
-		loss += F.cross_entropy(as_logits, as_tgt, ignore_index=-1)
-		loss += F.cross_entropy(ae_logits, ae_tgt, ignore_index=-1)
-		loss += F.cross_entropy(os_logits, os_tgt, ignore_index=-1)
-		loss += F.cross_entropy(oe_logits, oe_tgt, ignore_index=-1)
+		# loss += F.cross_entropy(as_logits, as_tgt, ignore_index=-1)
+		# loss += F.cross_entropy(ae_logits, ae_tgt, ignore_index=-1)
+		# loss += F.cross_entropy(os_logits, os_tgt, ignore_index=-1)
+		# loss += F.cross_entropy(oe_logits, oe_tgt, ignore_index=-1)
+		loss += focalCE_with_logits(as_logits, as_tgt, ignore_index=-1)
+		loss += focalCE_with_logits(ae_logits, ae_tgt, ignore_index=-1)
+		loss += focalCE_with_logits(os_logits, os_tgt, ignore_index=-1)
+		loss += focalCE_with_logits(oe_logits, oe_tgt, ignore_index=-1)
 
 		loss += F.binary_cross_entropy_with_logits(obj_logits, obj_tgt)
-		# loss += focalBCE_with_logits(obj_logits, obj_tgt)
+		# loss += 4*focalBCE_with_logits(obj_logits, obj_tgt)
 
-		loss += F.cross_entropy(c_logits, c_tgt, ignore_index=-1)
-		loss += F.cross_entropy(p_logits, p_tgt, ignore_index=-1)
+		# loss += F.cross_entropy(c_logits, c_tgt, ignore_index=-1)
+		# loss += F.cross_entropy(p_logits, p_tgt, ignore_index=-1)
+
+		loss += focalCE_with_logits(c_logits, c_tgt, ignore_index=-1)
+		loss += focalCE_with_logits(p_logits, p_tgt, ignore_index=-1)
 
 		# loss += F.cross_entropy(num_logits, num_tgt, ignore_index=-1)
 

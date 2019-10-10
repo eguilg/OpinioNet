@@ -179,7 +179,7 @@ if __name__ == '__main__':
 
 	tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
 	makeup_train_loader, makeup_val_loader, corpus_loader = get_pretrain_loaders(tokenizer, batch_size=args.bs)
-	model = OpinioNet.from_pretrained(model_config['path'])
+	model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
 	model.cuda()
 	optimizer = Adam(model.parameters(), lr=model_config['lr'])
 	scheduler = GradualWarmupScheduler(optimizer, total_epoch=2*max(len(makeup_train_loader), len(corpus_loader)))

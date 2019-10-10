@@ -1,5 +1,5 @@
 from pytorch_pretrained_bert import BertTokenizer
-from dataset import ReviewDataset, get_data_loaders_cv, get_pretrain_loaders, get_aug_data_loaders_cv
+from dataset import ReviewDataset, get_data_loaders_cv, get_aug_data_loaders_cv
 from lr_scheduler import GradualWarmupScheduler, ReduceLROnPlateau
 from model import OpinioNet
 
@@ -102,7 +102,7 @@ def eval_epoch(model, dataloader, type='makeup'):
 
 	total_loss = cum_loss / total_sample
 
-	threshs = list(np.arange(0.1, 0.9, 0.05))
+	threshs = list(np.arange(0.1, 0.9, 0.025))
 	best_f1, best_pr, best_rc = 0, 0, 0
 	best_thresh = 0.1
 	for th in threshs:
@@ -123,6 +123,7 @@ def eval_epoch(model, dataloader, type='makeup'):
 			best_thresh = th
 
 	return total_loss, best_f1, best_pr, best_rc, best_thresh
+
 
 import json
 import argparse
@@ -147,7 +148,7 @@ if __name__ == '__main__':
 		thresh_dict = {}
 
 	tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
-	cv_loaders = get_data_loaders_cv(rv_path='../data/TRAIN/Train_laptop_reviews.csv',
+	cv_loaders = get_aug_data_loaders_cv(rv_path='../data/TRAIN/Train_laptop_reviews.csv',
 									 lb_path='../data/TRAIN/Train_laptop_labels.csv',
 									 tokenizer=tokenizer,
 									 batch_size=args.bs,
@@ -157,7 +158,7 @@ if __name__ == '__main__':
 	BEST_THRESHS = [0.1] * FOLDS
 	BEST_F1 = [0] * FOLDS
 	for cv_idx, (train_loader, val_loader) in enumerate(cv_loaders):
-		model = OpinioNet.from_pretrained(model_config['path'])
+		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
 		model.load_state_dict(torch.load('../models/pretrained_'+model_config['name']))
 		model.cuda()
 		optimizer = Adam(model.parameters(), lr=model_config['lr'])
