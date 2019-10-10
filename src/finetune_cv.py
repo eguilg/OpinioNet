@@ -148,7 +148,7 @@ if __name__ == '__main__':
 		thresh_dict = {}
 
 	tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
-	cv_loaders = get_aug_data_loaders_cv(rv_path='../data/TRAIN/Train_laptop_reviews.csv',
+	cv_loaders = get_data_loaders_cv(rv_path='../data/TRAIN/Train_laptop_reviews.csv',
 									 lb_path='../data/TRAIN/Train_laptop_labels.csv',
 									 tokenizer=tokenizer,
 									 batch_size=args.bs,

@@ -29,7 +29,7 @@ class CorpusDataset(Dataset):
 	def _preprocess_data(self, corpus_df, tokenizer):
 		samples = []
 		for id, rv in zip(corpus_df['id'], corpus_df['Reviews']):
-			if len(rv) >= 200:
+			if len(rv) >= 120:
 				continue
 			RV = ['[CLS]']
 			RV_INTERVALS = []
@@ -127,7 +127,7 @@ class ReviewDataset(Dataset):
 	def _preprocess_data(self, reviews_df, labels_df, tokenizer):
 		samples = []
 		for id, rv in zip(reviews_df['id'], reviews_df['Reviews']):
-			rv = rv[:500]
+			rv = rv[:120]
 			RV = []
 			for c in rv:
 				if c == ' ':
@@ -432,6 +432,24 @@ def get_pretrain_loaders(tokenizer, batch_size, val_split=0.15):
 
 
 def get_pretrain2_loaders(tokenizer, batch_size, val_split=0.15):
+	makeup_rv1 = ReviewDataset('../data/TRAIN/Train_reviews.csv', '../data/TRAIN/Train_labels.csv', tokenizer)
+	makeup_rv2 = ReviewDataset('../data/TRAIN/Train_makeup_reviews.csv', '../data/TRAIN/Train_makeup_labels.csv',
+							   tokenizer)
+	makeup_rv = ConcatDataset([makeup_rv1, makeup_rv2])
+	makeup_loader = DataLoader(makeup_rv, batch_size, collate_fn=makeup_rv1.batchify, shuffle=True,
+									 num_workers=5,
+									 drop_last=False)
+
+	laptop_rv = ReviewDataset('../data/TRAIN/Train_laptop_corpus.csv', '../data/TRAIN/Train_laptop_corpus_labels.csv', tokenizer, 'laptop')
+	laptop_val_rv = ReviewDataset('../data/TRAIN/Train_laptop_reviews.csv', '../data/TRAIN/Train_laptop_labels.csv', tokenizer, 'laptop')
+
+	laptop_loader = DataLoader(laptop_rv, batch_size, collate_fn=laptop_rv.batchify, shuffle=True,
+									 num_workers=5,
+									 drop_last=False)
+
+	laptop_val_loader = DataLoader(laptop_val_rv, batch_size, collate_fn=laptop_val_rv.batchify, shuffle=False,
+									 num_workers=5,
+									 drop_last=False)
 
 	laptop_corpus1 = CorpusDataset('../data/TEST/Test_reviews.csv', tokenizer)
 	laptop_corpus2 = CorpusDataset('../data/TRAIN/Train_laptop_corpus.csv', tokenizer)
@@ -442,17 +460,10 @@ def get_pretrain2_loaders(tokenizer, batch_size, val_split=0.15):
 
 	corpus_rv = ConcatDataset(
 		[laptop_corpus1, laptop_corpus2, laptop_corpus3, makeup_corpus1, makeup_corpus2, makeup_corpus3])
-	corpus_train_size = int(len(corpus_rv) * (1 - val_split))
-	corpus_val_size = len(corpus_rv) - corpus_train_size
-	torch.manual_seed(502)
-	corpus_train, corpus_val = random_split(corpus_rv, [corpus_train_size, corpus_val_size])
-	corpus_train_loader = DataLoader(corpus_train, batch_size, collate_fn=laptop_corpus1.batchify, shuffle=True,
-									 num_workers=5,
-									 drop_last=False)
-	corpus_val_loader = DataLoader(corpus_val, batch_size, collate_fn=laptop_corpus1.batchify, shuffle=False, num_workers=5,
-								   drop_last=False)
+	corpus_loader = DataLoader(corpus_rv, batch_size, collate_fn=laptop_corpus1.batchify, shuffle=True, num_workers=5,
+							   drop_last=False)
 
-	return corpus_train_loader, corpus_val_loader
+	return makeup_loader, laptop_loader, laptop_val_loader, corpus_loader
 
 def get_makeup_full_loaders(tokenizer, batch_size):
 	makeup_rv1 = ReviewDataset('../data/TRAIN/Train_reviews.csv', '../data/TRAIN/Train_labels.csv', tokenizer)

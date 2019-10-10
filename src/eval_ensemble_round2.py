@@ -132,7 +132,7 @@ if __name__ == '__main__':
 		LABEL_DIR = None
 	else:
 		DATA_DIR = '../data/TRAIN/Train_laptop_corpus.csv'
-		LABEL_DIR = '../data/TRAIN/Train_laptop_corpus_label.csv'
+		LABEL_DIR = '../data/TRAIN/Train_laptop_corpus_labels.csv'
 		SUBMIT_DIR = None
 
 
@@ -194,5 +194,5 @@ if __name__ == '__main__':
 		result.to_csv(SUBMIT_DIR, header=False, index=False)
 	else:
 		result = gen_label(ret, raw)
-		result.to_csv(LABEL_DIR, header=False, index=False)
+		result.to_csv(LABEL_DIR, header=True, index=False)
 	print(len(result['id'].unique()), result.shape[0])
