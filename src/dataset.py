@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.model_selection import KFold
 import jieba
 import numpy as np
+from data_augmentation import data_augment
 # { 硬件&性能、软件&性能、外观、使用场景、物流、服务、包装、价格、真伪、整体、其他 }
 ID2C = ['包装', '成分', '尺寸', '服务', '功效', '价格', '气味', '使用体验', '物流', '新鲜度', '真伪', '整体', '其他']
 ID2COMMON = ['物流', '服务', '包装', '价格', '真伪', '整体', '其他']
@@ -92,16 +93,26 @@ class CorpusDataset(Dataset):
 		return len(self.samples)
 
 class ReviewDataset(Dataset):
-	def __init__(self, reviews_path, labels_path, tokenizer, type='makeup'):
+	def __init__(self, reviews, labels, tokenizer, type='makeup'):
 		super(ReviewDataset, self).__init__()
-		reviews_df = pd.read_csv(reviews_path, encoding='utf-8')
+		if isinstance(reviews, str):
+			reviews_df = pd.read_csv(reviews, encoding='utf-8')
+		elif isinstance(reviews, pd.DataFrame):
+			reviews_df = reviews
+		else:
+			raise TypeError("接受路径或df")
 		if type == 'makeup':
 			self.C2ID = MAKUP2ID
 		else:
 			self.C2ID = LAPTOP2ID
 		labels_df = None
-		if labels_path is not None:
-			labels_df = pd.read_csv(labels_path, encoding='utf-8')
+		if labels is not None:
+			if isinstance(labels, str):
+				labels_df = pd.read_csv(labels, encoding='utf-8')
+			elif isinstance(labels, pd.DataFrame):
+				labels_df = labels
+			else:
+				raise TypeError("接受路径或df")
 
 		self.samples = self._preprocess_data(reviews_df, labels_df, tokenizer)
 		self.PAD_ID = tokenizer.vocab['[PAD]']
@@ -116,6 +127,7 @@ class ReviewDataset(Dataset):
 	def _preprocess_data(self, reviews_df, labels_df, tokenizer):
 		samples = []
 		for id, rv in zip(reviews_df['id'], reviews_df['Reviews']):
+			rv = rv[:500]
 			RV = []
 			for c in rv:
 				if c == ' ':
@@ -289,46 +301,65 @@ def get_data_loaders(rv_path, lb_path, tokenizer, batch_size, val_split=0.15):
 	return train_loader, val_loader
 
 
-def get_data_loaders_cv(rv_path, lb_path, tokenizer, batch_size, type='makeup', folds=5):
+def get_full_data_loaders(rv_path, lb_path, tokenizer, batch_size, type='makeup', shuffle=False):
+	full_dataset = ReviewDataset(rv_path, lb_path, tokenizer, type)
+	loader = DataLoader(full_dataset, batch_size, collate_fn=full_dataset.batchify, shuffle=shuffle, num_workers=5,
+							  drop_last=False)
+
+	return loader
+
+
+def get_data_loaders_cv(rv_path, lb_path, tokenizer, batch_size, type='makeup', folds=5, return_val_idxs=False):
 	full_dataset = ReviewDataset(rv_path, lb_path, tokenizer, type)
 
 	kf = KFold(n_splits=folds, shuffle=True, random_state=502)
 	folds = kf.split(full_dataset)
 	cv_loaders = []
+	val_idxs = []
 	for train_idx, val_idx in folds:
 		train_loader = DataLoader([full_dataset.samples[i] for i in train_idx], batch_size,
 								  collate_fn=full_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
 		val_loader = DataLoader([full_dataset.samples[i] for i in val_idx], batch_size,
-								collate_fn=full_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
+								collate_fn=full_dataset.batchify, shuffle=False, num_workers=5, drop_last=False)
 		cv_loaders.append((train_loader, val_loader))
+		val_idxs.append(val_idx)
+
+	if return_val_idxs:
+		return cv_loaders, val_idxs
 
 	return cv_loaders
 
 
 def get_aug_data_loaders_cv(rv_path, lb_path, tokenizer, batch_size, type='makeup', folds=5):
-	full_dataset = ReviewDataset(rv_path, lb_path, tokenizer, type)
-
+	# full_dataset = ReviewDataset(rv_path, lb_path, tokenizer, type)
+	rv_df = pd.read_csv(rv_path, encoding='utf-8')
+	lb_df = pd.read_csv(lb_path, encoding='utf-8')
 	kf = KFold(n_splits=folds, shuffle=True, random_state=502)
-	org_size = len(full_dataset)//4
-	folds = kf.split(range(org_size))
-	cv_loaders = []
+	folds = kf.split(range(rv_df.shape[0]))
 	for train_idx, val_idx in folds:
-		train_samples, val_samples = [], []
-		for idx in train_idx:
-			for i in range(4):
-				train_samples.append(full_dataset.samples[idx+org_size*i])
-		for idx in val_idx:
-			# for i in range(4):
-			val_samples.append(full_dataset.samples[idx])
+		train_rv_df = rv_df.iloc[train_idx].copy()
+		train_lb_df = lb_df[lb_df['id'].isin(train_rv_df['id'])].copy()
+		val_rv_df = rv_df.iloc[val_idx].copy()
+		val_lb_df = lb_df[lb_df['id'].isin(val_rv_df['id'])].copy()
+
+		train_rv_aug_df, train_lb_aug_df = data_augment(train_rv_df, train_lb_df, 1)
+
+		print(train_rv_aug_df.shape[0])
+		print(train_rv_df.shape[0])
+		train_rv_df['id'] += train_rv_aug_df.shape[0]
+		train_lb_df['id'] += train_rv_aug_df.shape[0]
+		train_rv_aug_df = train_rv_aug_df.append(train_rv_df, ignore_index=True)
+		train_lb_aug_df = train_lb_aug_df.append(train_lb_df, ignore_index=True)
+
+		train_dataset = ReviewDataset(train_rv_aug_df, train_lb_aug_df, tokenizer, type)
+		val_dataset = ReviewDataset(val_rv_df, val_lb_df, tokenizer, type)
 
 
-		train_loader = DataLoader(train_samples, batch_size,
-								  collate_fn=full_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
-		val_loader = DataLoader(val_samples, batch_size,
-								collate_fn=full_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
-		cv_loaders.append((train_loader, val_loader))
-
-	return cv_loaders
+		train_loader = DataLoader(train_dataset, batch_size,
+								  collate_fn=train_dataset.batchify, shuffle=True, num_workers=5, drop_last=False)
+		val_loader = DataLoader(val_dataset, batch_size,
+								collate_fn=val_dataset.batchify, shuffle=False, num_workers=5, drop_last=False)
+		yield train_loader, val_loader
 
 
 def get_data_loaders_round2(tokenizer, batch_size, val_split=0.15):
@@ -399,6 +430,40 @@ def get_pretrain_loaders(tokenizer, batch_size, val_split=0.15):
 
 	return makeup_train_loader, makeup_val_loader, corpus_loader
 
+
+def get_pretrain2_loaders(tokenizer, batch_size, val_split=0.15):
+
+	laptop_corpus1 = CorpusDataset('../data/TEST/Test_reviews.csv', tokenizer)
+	laptop_corpus2 = CorpusDataset('../data/TRAIN/Train_laptop_corpus.csv', tokenizer)
+	laptop_corpus3 = CorpusDataset('../data/TRAIN/Train_laptop_reviews.csv', tokenizer)
+	makeup_corpus1 = CorpusDataset('../data/TEST/Test_reviews1.csv', tokenizer)
+	makeup_corpus2 = CorpusDataset('../data/TRAIN/Train_reviews.csv', tokenizer)
+	makeup_corpus3 = CorpusDataset('../data/TRAIN/Train_makeup_reviews.csv', tokenizer)
+
+	corpus_rv = ConcatDataset(
+		[laptop_corpus1, laptop_corpus2, laptop_corpus3, makeup_corpus1, makeup_corpus2, makeup_corpus3])
+	corpus_train_size = int(len(corpus_rv) * (1 - val_split))
+	corpus_val_size = len(corpus_rv) - corpus_train_size
+	torch.manual_seed(502)
+	corpus_train, corpus_val = random_split(corpus_rv, [corpus_train_size, corpus_val_size])
+	corpus_train_loader = DataLoader(corpus_train, batch_size, collate_fn=laptop_corpus1.batchify, shuffle=True,
+									 num_workers=5,
+									 drop_last=False)
+	corpus_val_loader = DataLoader(corpus_val, batch_size, collate_fn=laptop_corpus1.batchify, shuffle=False, num_workers=5,
+								   drop_last=False)
+
+	return corpus_train_loader, corpus_val_loader
+
+def get_makeup_full_loaders(tokenizer, batch_size):
+	makeup_rv1 = ReviewDataset('../data/TRAIN/Train_reviews.csv', '../data/TRAIN/Train_labels.csv', tokenizer)
+	makeup_rv2 = ReviewDataset('../data/TRAIN/Train_makeup_reviews.csv', '../data/TRAIN/Train_makeup_labels.csv',
+							   tokenizer)
+	makeup_rv = ConcatDataset([makeup_rv1, makeup_rv2])
+	makeup_train_loader = DataLoader(makeup_rv, batch_size, collate_fn=makeup_rv1.batchify, shuffle=True,
+									 num_workers=5,
+									 drop_last=False)
+
+	return makeup_train_loader
 
 if __name__ == '__main__':
 	from pytorch_pretrained_bert import BertTokenizer
