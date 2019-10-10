@@ -252,7 +252,7 @@ if __name__ == '__main__':
   SAVING_DIR = '../models/'
 
   tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
-  makeup_loader, laptop_loader, laptop_val_loader, corpus_loader = get_pretrain2_loaders(tokenizer, batch_size=args.bs)
+  makeup_loader, makeup_val_loader, laptop_loader, laptop_val_loader, corpus_loader = get_pretrain2_loaders(tokenizer, batch_size=args.bs)
   model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
   model.cuda()
   optimizer = Adam(model.parameters(), lr=model_config['lr'])
@@ -271,8 +271,12 @@ if __name__ == '__main__':
     print("lm loss %.5f", total_lm_loss)
 
     print('Epoch [%d/%d] makeup eval:' % (e, EP))
-    val_loss, val_f1, val_pr, val_rc, best_th = eval_epoch(model, laptop_val_loader, type='laptop')
+    val_loss, val_f1, val_pr, val_rc, best_th = eval_epoch(model, makeup_val_loader, type='makeup')
     print("makeup_val: loss %.5f, f1 %.5f, pr %.5f, rc %.5f, thresh %.2f" % (val_loss, val_f1, val_pr, val_rc, best_th))
+
+    print('Epoch [%d/%d] laptop eval:' % (e, EP))
+    val_loss, val_f1, val_pr, val_rc, best_th = eval_epoch(model, laptop_val_loader, type='laptop')
+    print("laptop_val: loss %.5f, f1 %.5f, pr %.5f, rc %.5f, thresh %.2f" % (val_loss, val_f1, val_pr, val_rc, best_th))
 
     if val_loss < best_val_loss:
       best_val_loss = val_loss
@@ -285,5 +289,5 @@ if __name__ == '__main__':
 
     print('best loss %.5f' % best_val_loss)
     print('best f1 %.5f' % best_val_f1)
-    if best_val_f1 >= 0.82:
-      break
+    # if best_val_f1 >= 0.82:
+    #   break
