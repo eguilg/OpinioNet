@@ -1,17 +1,1 @@
-{
-"roberta_cv0": {"name": "roberta", "thresh": 0.5, "f1": 0.3868520859671303},
-"roberta_cv1": {"name": "roberta", "thresh": 0.35, "f1": 0.3868520859671303},
-"roberta_cv2": {"name": "roberta", "thresh": 0.55, "f1": 0.3868520859671303},
-"roberta_cv3": {"name": "roberta", "thresh": 0.5, "f1": 0.3868520859671303},
-"roberta_cv4": {"name": "roberta", "thresh": 0.45, "f1": 0.3868520859671303},
-"wwm_cv0": {"name": "wwm", "thresh": 0.4500000000000001, "f1": 0.3868520859671303},
-"wwm_cv1": {"name": "wwm", "thresh": 0.600000000000001, "f1": 0.3868520859671303},
-"wwm_cv2": {"name": "wwm", "thresh": 0.3500000000000001, "f1": 0.3868520859671303},
-"wwm_cv3": {"name": "wwm", "thresh": 0.500000000000001, "f1": 0.3868520859671303},
-"wwm_cv4": {"name": "wwm", "thresh": 0.600000000000001, "f1": 0.3868520859671303},
-"ernie_cv1": {"name": "ernie", "thresh": 0.7500000000000001, "f1": 0.3868520859671303},
-"ernie_cv2": {"name": "ernie", "thresh": 0.500000000000001, "f1": 0.3868520859671303},
-"ernie_cv3": {"name": "ernie", "thresh": 0.700000000000001, "f1": 0.3868520859671303},
-"ernie_cv4": {"name": "ernie", "thresh": 0.7500000000000001, "f1": 0.3868520859671303}
-
-}
+{"roberta_cv0": {"name": "roberta", "thresh": 0.5, "f1": 0.3868520859671303}, "roberta_cv1": {"name": "roberta", "thresh": 0.35, "f1": 0.3868520859671303}, "roberta_cv2": {"name": "roberta", "thresh": 0.55, "f1": 0.3868520859671303}, "roberta_cv3": {"name": "roberta", "thresh": 0.5, "f1": 0.3868520859671303}, "roberta_cv4": {"name": "roberta", "thresh": 0.45, "f1": 0.3868520859671303}, "wwm_cv0": {"name": "wwm", "thresh": 0.4500000000000001, "f1": 0.3868520859671303}, "wwm_cv1": {"name": "wwm", "thresh": 0.600000000000001, "f1": 0.3868520859671303}, "wwm_cv2": {"name": "wwm", "thresh": 0.3500000000000001, "f1": 0.3868520859671303}, "wwm_cv3": {"name": "wwm", "thresh": 0.500000000000001, "f1": 0.3868520859671303}, "wwm_cv4": {"name": "wwm", "thresh": 0.600000000000001, "f1": 0.3868520859671303}, "ernie_cv1": {"name": "ernie", "thresh": 0.7500000000000001, "f1": 0.3868520859671303}, "ernie_cv2": {"name": "ernie", "thresh": 0.500000000000001, "f1": 0.3868520859671303}, "ernie_cv3": {"name": "ernie", "thresh": 0.700000000000001, "f1": 0.3868520859671303}, "ernie_cv4": {"name": "ernie", "thresh": 0.7500000000000001, "f1": 0.3868520859671303}, "roberta2_cv0": {"name": "roberta", "thresh": 0.29999999999999993, "f1": 0.854788877445932}}
