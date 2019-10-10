@@ -126,11 +126,13 @@ def data_augment(reviews_df, labels_df, epochs=5):
 
 
 if __name__ == '__main__':
-  reviews_df = pd.read_csv('../data/TRAIN/Train_laptop_reviews.csv', encoding='utf-8')
-  labels_df = pd.read_csv('../data/TRAIN/Train_laptop_labels.csv', encoding='utf-8')
-  epochs = 1  # 控制aug的倍数, 建议取<=5的正整数
+  data_type = 'laptop_corpus'
+  epochs = 3  # 控制aug的倍数, 建议取<=5的正整数
+
+  reviews_df = pd.read_csv('../data/TRAIN/Train_%s_reviews.csv' % data_type, encoding='utf-8')
+  labels_df = pd.read_csv('../data/TRAIN/Train_%s_labels.csv' % data_type, encoding='utf-8')
 
   new_reviews_df, new_labels_df = data_augment(reviews_df, labels_df, epochs)
 
-  new_reviews_df.to_csv('../data/TRAIN/Train_laptop_aug_reviews.csv', index=False, encoding='utf-8')
-  new_labels_df.to_csv('../data/TRAIN/Train_laptop_aug_labels.csv', index=False, encoding='utf-8')
+  new_reviews_df.to_csv('../data/TRAIN/Train_%s_aug_reviews.csv' % data_type, index=False, encoding='utf-8')
+  new_labels_df.to_csv('../data/TRAIN/Train_%s_aug_labels.csv' % data_type, index=False, encoding='utf-8')
