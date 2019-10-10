@@ -85,11 +85,11 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 		makeup_probs, makeup_logits = model.forward(makeup_x, type='makeup')
 		loss = model.loss(makeup_logits, makeup_y)
 
-		# optimizer.zero_grad()
-		# loss.backward()
-		# optimizer.step()
-		# if scheduler:
-		# 	scheduler.step()
+		optimizer.zero_grad()
+		loss.backward()
+		optimizer.step()
+		if scheduler:
+			scheduler.step()
 
 		makeup_pred = model.gen_candidates(makeup_probs)
 		makeup_pred = model.nms_filter(makeup_pred, 0.1)
@@ -104,7 +104,6 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 
 		cum_makeup_loss += loss.data.cpu().numpy() * len(makeup_rv_raw)
 		total_makeup_sample += len(makeup_rv_raw)
-		step += 1
 		while makeup_x:
 			a = makeup_x.pop(); del a
 		while makeup_y:
@@ -126,7 +125,7 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 		laptop_y = [item.cuda() for item in laptop_y]
 
 		laptop_probs, laptop_logits = model.forward(laptop_x, type='laptop')
-		loss += model.loss(laptop_logits, laptop_y)
+		loss = model.loss(laptop_logits, laptop_y)
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -147,7 +146,6 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 
 		cum_laptop_loss += loss.data.cpu().numpy() * len(laptop_rv_raw)
 		total_laptop_sample += len(laptop_rv_raw)
-		step += 1
 		while laptop_x:
 			a = laptop_x.pop(); del a
 		while laptop_y:
@@ -158,6 +156,9 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 			a = laptop_logits.pop(); del a
 
 		del loss
+
+
+		step += 1
 
 	total_lm_loss = cum_lm_loss / total_lm_sample
 	
@@ -242,7 +243,7 @@ if __name__ == '__main__':
 	model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
 	model.cuda()
 	optimizer = Adam(model.parameters(), lr=model_config['lr'])
-	scheduler = GradualWarmupScheduler(optimizer, total_epoch=3*max(len(makeup_loader), len(laptop_loader), len(corpus_loader)))
+	scheduler = GradualWarmupScheduler(optimizer, total_epoch=2*max(len(makeup_loader), len(laptop_loader), len(corpus_loader)))
 	best_val_f1 = 0
 	best_val_loss = float('inf')
 	for e in range(EP):
