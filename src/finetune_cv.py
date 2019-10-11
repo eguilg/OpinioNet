@@ -137,7 +137,7 @@ if __name__ == '__main__':
   parser.add_argument('--gpu', type=int, default=0)
   args = parser.parse_args()
 
-  os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % args.gpu
+  # os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % args.gpu
 
   EP = 100
   FOLDS = 5
@@ -163,7 +163,7 @@ if __name__ == '__main__':
   BEST_THRESHS = [0.1] * FOLDS
   BEST_F1 = [0] * FOLDS
   for cv_idx, (train_loader, val_loader) in enumerate(cv_loaders):
-    model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
+    model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'], focal=model_config['focal'])
     model.load_state_dict(torch.load('../models/pretrained_' + model_config['name']))
     model.cuda()
     optimizer = Adam(model.parameters(), lr=model_config['lr'])

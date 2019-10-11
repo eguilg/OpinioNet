@@ -102,7 +102,7 @@ if __name__ == '__main__':
 	LB, GT = [], []
 	VAL_IDX = []
 	for cv_idx, (train_loader, val_loader) in enumerate(cv_loaders):
-		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
+		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'], focal=model_config['focal'])
 		model.load_state_dict(torch.load('../models/' + model_config['name']+'_cv'+str(cv_idx)))
 		model.cuda()
 		model.eval()

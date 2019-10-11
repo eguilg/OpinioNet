@@ -155,11 +155,12 @@ if __name__ == '__main__':
 		if not osp.isfile('../models/' + weight_name):
 			continue
 		num_model += 1
-		tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODELS[model_name]['path'], do_lower_case=True)
+		model_config = PRETRAINED_MODELS[model_name]
+		tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
 		test_dataset = ReviewDataset(DATA_DIR, None, tokenizer, 'laptop')
 		test_loader = DataLoader(test_dataset, 12, collate_fn=test_dataset.batchify, shuffle=False, num_workers=5)
-		print(PRETRAINED_MODELS[model_name])
-		model = OpinioNet.from_pretrained(PRETRAINED_MODELS[model_name]['path'], version=PRETRAINED_MODELS[model_name]['version'])
+		print(model_config)
+		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'], focal=model_config['focal'])
 		model.load_state_dict(torch.load('../models/' + weight_name))
 		model.cuda()
 		ret = accum_result(ret, eval_epoch(model, test_loader, thresh))

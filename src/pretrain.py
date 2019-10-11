@@ -182,15 +182,16 @@ if __name__ == '__main__':
   parser.add_argument('--gpu', type=int, default=0)
   args = parser.parse_args()
 
-  os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % args.gpu
+  # os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % args.gpu
 
   EP = 25
   model_config = PRETRAINED_MODELS[args.base_model]
+  print(model_config)
   SAVING_DIR = '../models/'
 
   tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
   makeup_train_loader, makeup_val_loader, corpus_loader = get_pretrain_loaders(tokenizer, batch_size=args.bs)
-  model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
+  model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'], focal=model_config['focal'])
   model.cuda()
   optimizer = Adam(model.parameters(), lr=model_config['lr'])
   scheduler = GradualWarmupScheduler(optimizer, total_epoch=2 * max(len(makeup_train_loader), len(corpus_loader)))
@@ -216,8 +217,8 @@ if __name__ == '__main__':
         saving_dir = osp.join(SAVING_DIR, 'pretrained_' + model_config['name'])
         torch.save(model.state_dict(), saving_dir)
         print('saved best model to %s' % saving_dir)
-
+    else:
+      break
     print('best loss %.5f' % best_val_loss)
     print('best f1 %.5f' % best_val_f1)
-    if best_val_f1 >= 0.82:
-      break
+

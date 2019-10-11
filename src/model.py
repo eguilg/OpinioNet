@@ -58,11 +58,12 @@ def focalCE_with_logits(logit, target, ignore_index=-1, alpha=None, gamma=2, smo
 
 
 class OpinioNet(BertPreTrainedModel):
-	def __init__(self, config, hidden=100, gpu=True, dropout_prob=0.3, bert_cache_dir=None, version='large'):
+	def __init__(self, config, hidden=100, gpu=True, dropout_prob=0.3, bert_cache_dir=None, version='large', focal=False):
 		super(OpinioNet, self).__init__(config)
 		self.version = version
 		if self.version == 'tiny':
 			self._tiny_version_init(hidden)
+		self.focal = focal
 
 		self.bert_cache_dir = bert_cache_dir
 
@@ -245,25 +246,25 @@ class OpinioNet(BertPreTrainedModel):
 		p_logits = p_logits.permute((0, 2, 1))
 
 		loss = 0
-		# loss += F.cross_entropy(as_logits, as_tgt, ignore_index=-1)
-		# loss += F.cross_entropy(ae_logits, ae_tgt, ignore_index=-1)
-		# loss += F.cross_entropy(os_logits, os_tgt, ignore_index=-1)
-		# loss += F.cross_entropy(oe_logits, oe_tgt, ignore_index=-1)
-		loss += focalCE_with_logits(as_logits, as_tgt, ignore_index=-1)
-		loss += focalCE_with_logits(ae_logits, ae_tgt, ignore_index=-1)
-		loss += focalCE_with_logits(os_logits, os_tgt, ignore_index=-1)
-		loss += focalCE_with_logits(oe_logits, oe_tgt, ignore_index=-1)
+		
+		if self.focal:
+			loss += focalCE_with_logits(as_logits, as_tgt, ignore_index=-1)
+			loss += focalCE_with_logits(ae_logits, ae_tgt, ignore_index=-1)
+			loss += focalCE_with_logits(os_logits, os_tgt, ignore_index=-1)
+			loss += focalCE_with_logits(oe_logits, oe_tgt, ignore_index=-1)
+			loss += focalCE_with_logits(c_logits, c_tgt, ignore_index=-1)
+			loss += focalCE_with_logits(p_logits, p_tgt, ignore_index=-1)
+		else:
+			loss += F.cross_entropy(as_logits, as_tgt, ignore_index=-1)
+			loss += F.cross_entropy(ae_logits, ae_tgt, ignore_index=-1)
+			loss += F.cross_entropy(os_logits, os_tgt, ignore_index=-1)
+			loss += F.cross_entropy(oe_logits, oe_tgt, ignore_index=-1)
+			loss += F.cross_entropy(c_logits, c_tgt, ignore_index=-1)
+			loss += F.cross_entropy(p_logits, p_tgt, ignore_index=-1)
 
+		
 		loss += F.binary_cross_entropy_with_logits(obj_logits, obj_tgt)
 		# loss += 4*focalBCE_with_logits(obj_logits, obj_tgt)
-
-		# loss += F.cross_entropy(c_logits, c_tgt, ignore_index=-1)
-		# loss += F.cross_entropy(p_logits, p_tgt, ignore_index=-1)
-
-		loss += focalCE_with_logits(c_logits, c_tgt, ignore_index=-1)
-		loss += focalCE_with_logits(p_logits, p_tgt, ignore_index=-1)
-
-		# loss += F.cross_entropy(num_logits, num_tgt, ignore_index=-1)
 
 		return loss
 
