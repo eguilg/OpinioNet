@@ -6,13 +6,13 @@ PRETRAINED_MODELS = {
 		'version': 'large',
 		'focal': False
     },
-    'wwm': {
-        'name': 'wwm',
-        'path': '../models/chinese_wwm_ext_pytorch',
-        'lr': 6e-6,
-		'version': 'large',
-		'focal': False
-    },
+    # 'wwm': {
+    #     'name': 'wwm',
+    #     'path': '../models/chinese_wwm_ext_pytorch',
+    #     'lr': 6e-6,
+		# 'version': 'large',
+		# 'focal': False
+    # },
     'ernie': {
         'name': 'ernie',
         'path': '../models/ERNIE',
@@ -49,13 +49,13 @@ PRETRAINED_MODELS = {
 		'version': 'tiny',
 		'focal': True
     },
-    'wwm_tiny': {
-        'name': 'wwm_tiny',
-        'path': '../models/chinese_wwm_ext_pytorch',
-        'lr': 6e-6,
-		'version': 'tiny',
-		'focal': True
-    },
+    # 'wwm_tiny': {
+    #     'name': 'wwm_tiny',
+    #     'path': '../models/chinese_wwm_ext_pytorch',
+    #     'lr': 6e-6,
+		# 'version': 'tiny',
+		# 'focal': True
+    # },
     'ernie_tiny': {
         'name': 'ernie_tiny',
         'path': '../models/ERNIE',
