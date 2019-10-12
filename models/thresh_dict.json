@@ -1,1 +1,222 @@
-{"roberta_cv0": {"name": "roberta", "thresh": 0.5, "f1": 0.3868520859671303}, "roberta_cv1": {"name": "roberta", "thresh": 0.35, "f1": 0.3868520859671303}, "roberta_cv2": {"name": "roberta", "thresh": 0.55, "f1": 0.3868520859671303}, "roberta_cv3": {"name": "roberta", "thresh": 0.5, "f1": 0.3868520859671303}, "roberta_cv4": {"name": "roberta", "thresh": 0.45, "f1": 0.3868520859671303}, "wwm_cv0": {"name": "wwm", "thresh": 0.4500000000000001, "f1": 0.3868520859671303}, "wwm_cv1": {"name": "wwm", "thresh": 0.600000000000001, "f1": 0.3868520859671303}, "wwm_cv2": {"name": "wwm", "thresh": 0.3500000000000001, "f1": 0.3868520859671303}, "wwm_cv3": {"name": "wwm", "thresh": 0.500000000000001, "f1": 0.3868520859671303}, "wwm_cv4": {"name": "wwm", "thresh": 0.600000000000001, "f1": 0.3868520859671303}, "ernie_cv1": {"name": "ernie", "thresh": 0.7500000000000001, "f1": 0.3868520859671303}, "ernie_cv2": {"name": "ernie", "thresh": 0.500000000000001, "f1": 0.3868520859671303}, "ernie_cv3": {"name": "ernie", "thresh": 0.700000000000001, "f1": 0.3868520859671303}, "ernie_cv4": {"name": "ernie", "thresh": 0.7500000000000001, "f1": 0.3868520859671303}, "roberta_focal_cv0": {"name": "roberta_focal", "thresh": 0.35, "f1": 0.7833333333333333}, "roberta_focal_cv1": {"name": "roberta_focal", "thresh": 0.3749999999999999, "f1": 0.8455114822546973}, "roberta_focal_cv2": {"name": "roberta_focal", "thresh": 0.22499999999999998, "f1": 0.8355739400206825}, "roberta_focal_cv3": {"name": "roberta_focal", "thresh": 0.47499999999999987, "f1": 0.7962382445141065}, "roberta_focal_cv4": {"name": "roberta_focal", "thresh": 0.47499999999999987, "f1": 0.8249496981891348}, "wwm_focal_cv0": {"name": "wwm_focal", "thresh": 0.22499999999999998, "f1": 0.7887323943661972}, "wwm_focal_cv1": {"name": "wwm_focal", "thresh": 0.3749999999999999, "f1": 0.8340248962655602}, "wwm_focal_cv2": {"name": "wwm_focal", "thresh": 0.1, "f1": 0.8231644260599793}, "wwm_focal_cv3": {"name": "wwm_focal", "thresh": 0.3749999999999999, "f1": 0.7732497387669802}, "wwm_focal_cv4": {"name": "wwm_focal", "thresh": 0.3749999999999999, "f1": 0.811740890688259}}
+{
+  "roberta_cv0": {
+    "name": "roberta",
+    "thresh": 0.5,
+    "f1": 0.3868520859671303
+  },
+  "roberta_cv1": {
+    "name": "roberta",
+    "thresh": 0.35,
+    "f1": 0.3868520859671303
+  },
+  "roberta_cv2": {
+    "name": "roberta",
+    "thresh": 0.55,
+    "f1": 0.3868520859671303
+  },
+  "roberta_cv3": {
+    "name": "roberta",
+    "thresh": 0.5,
+    "f1": 0.3868520859671303
+  },
+  "roberta_cv4": {
+    "name": "roberta",
+    "thresh": 0.45,
+    "f1": 0.3868520859671303
+  },
+  "wwm_cv0": {
+    "name": "wwm",
+    "thresh": 0.4500000000000001,
+    "f1": 0.3868520859671303
+  },
+  "wwm_cv1": {
+    "name": "wwm",
+    "thresh": 0.600000000000001,
+    "f1": 0.3868520859671303
+  },
+  "wwm_cv2": {
+    "name": "wwm",
+    "thresh": 0.3500000000000001,
+    "f1": 0.3868520859671303
+  },
+  "wwm_cv3": {
+    "name": "wwm",
+    "thresh": 0.500000000000001,
+    "f1": 0.3868520859671303
+  },
+  "wwm_cv4": {
+    "name": "wwm",
+    "thresh": 0.600000000000001,
+    "f1": 0.3868520859671303
+  },
+  "ernie_cv1": {
+    "name": "ernie",
+    "thresh": 0.7500000000000001,
+    "f1": 0.3868520859671303
+  },
+  "ernie_cv2": {
+    "name": "ernie",
+    "thresh": 0.500000000000001,
+    "f1": 0.3868520859671303
+  },
+  "ernie_cv3": {
+    "name": "ernie",
+    "thresh": 0.700000000000001,
+    "f1": 0.3868520859671303
+  },
+  "ernie_cv4": {
+    "name": "ernie",
+    "thresh": 0.7500000000000001,
+    "f1": 0.3868520859671303
+  },
+  "roberta_focal_cv0": {
+    "name": "roberta_focal",
+    "thresh": 0.35,
+    "f1": 0.7833333333333333
+  },
+  "roberta_focal_cv1": {
+    "name": "roberta_focal",
+    "thresh": 0.3749999999999999,
+    "f1": 0.8455114822546973
+  },
+  "roberta_focal_cv2": {
+    "name": "roberta_focal",
+    "thresh": 0.22499999999999998,
+    "f1": 0.8355739400206825
+  },
+  "roberta_focal_cv3": {
+    "name": "roberta_focal",
+    "thresh": 0.47499999999999987,
+    "f1": 0.7962382445141065
+  },
+  "roberta_focal_cv4": {
+    "name": "roberta_focal",
+    "thresh": 0.47499999999999987,
+    "f1": 0.8249496981891348
+  },
+  "wwm_focal_cv0": {
+    "name": "wwm_focal",
+    "thresh": 0.22499999999999998,
+    "f1": 0.7887323943661972
+  },
+  "wwm_focal_cv1": {
+    "name": "wwm_focal",
+    "thresh": 0.3749999999999999,
+    "f1": 0.8340248962655602
+  },
+  "wwm_focal_cv2": {
+    "name": "wwm_focal",
+    "thresh": 0.1,
+    "f1": 0.8231644260599793
+  },
+  "wwm_focal_cv3": {
+    "name": "wwm_focal",
+    "thresh": 0.3749999999999999,
+    "f1": 0.7732497387669802
+  },
+  "wwm_focal_cv4": {
+    "name": "wwm_focal",
+    "thresh": 0.3749999999999999,
+    "f1": 0.811740890688259
+  },
+  "ernie_focal_cv0": {
+    "name": "ernie_focal",
+    "thresh": 0.1,
+    "f1": 0.7650602409638554
+  },
+  "ernie_focal_cv1": {
+    "name": "ernie_focal",
+    "thresh": 0.5499999999999999,
+    "f1": 0.8254310344827587
+  },
+  "ernie_focal_cv2": {
+    "name": "ernie_focal",
+    "thresh": 0.3999999999999999,
+    "f1": 0.8250265111346765
+  },
+  "ernie_focal_cv3": {
+    "name": "ernie_focal",
+    "thresh": 0.3999999999999999,
+    "f1": 0.7950052029136315
+  },
+  "ernie_focal_cv4": {
+    "name": "ernie_focal",
+    "thresh": 0.3999999999999999,
+    "f1": 0.8084677419354838
+  },
+  "roberta_tiny_cv0": {
+    "name": "roberta_tiny",
+    "thresh": 0.44999999999999996,
+    "f1": 0.7733050847457626
+  },
+  "roberta_tiny_cv1": {
+    "name": "roberta_tiny",
+    "thresh": 0.47499999999999987,
+    "f1": 0.8273684210526316
+  },
+  "roberta_tiny_cv2": {
+    "name": "roberta_tiny",
+    "thresh": 0.5999999999999999,
+    "f1": 0.8401727861771057
+  },
+  "roberta_tiny_cv3": {
+    "name": "roberta_tiny",
+    "thresh": 0.44999999999999996,
+    "f1": 0.7889344262295082
+  },
+  "roberta_tiny_cv4": {
+    "name": "roberta_tiny",
+    "thresh": 0.19999999999999998,
+    "f1": 0.8202137998056366
+  },
+  "wwm_tiny_cv0": {
+    "name": "wwm_tiny",
+    "thresh": 0.24999999999999997,
+    "f1": 0.7817258883248731
+  },
+  "wwm_tiny_cv1": {
+    "name": "wwm_tiny",
+    "thresh": 0.27499999999999997,
+    "f1": 0.8353909465020576
+  },
+  "wwm_tiny_cv2": {
+    "name": "wwm_tiny",
+    "thresh": 0.22499999999999998,
+    "f1": 0.8165803108808289
+  },
+  "wwm_tiny_cv3": {
+    "name": "wwm_tiny",
+    "thresh": 0.42499999999999993,
+    "f1": 0.786008230452675
+  },
+  "wwm_tiny_cv4": {
+    "name": "wwm_tiny",
+    "thresh": 0.27499999999999997,
+    "f1": 0.8113391984359726
+  },
+  "ernie_tiny_cv0": {
+    "name": "ernie_tiny",
+    "thresh": 0.125,
+    "f1": 0.7827827827827828
+  },
+  "ernie_tiny_cv1": {
+    "name": "ernie_tiny",
+    "thresh": 0.42499999999999993,
+    "f1": 0.8366701791359327
+  },
+  "ernie_tiny_cv2": {
+    "name": "ernie_tiny",
+    "thresh": 0.29999999999999993,
+    "f1": 0.8230366492146597
+  },
+  "ernie_tiny_cv3": {
+    "name": "ernie_tiny",
+    "thresh": 0.47499999999999987,
+    "f1": 0.7923728813559322
+  },
+  "ernie_tiny_cv4": {
+    "name": "ernie_tiny",
+    "thresh": 0.4999999999999999,
+    "f1": 0.8109756097560975
+  }
+}
