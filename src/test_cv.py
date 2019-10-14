@@ -71,6 +71,7 @@ def gen_submit(ret, raw):
 
 
 import json
+import os
 import argparse
 from config import PRETRAINED_MODELS
 if __name__ == '__main__':
@@ -102,11 +103,16 @@ if __name__ == '__main__':
 	LB, GT = [], []
 	VAL_IDX = []
 	for cv_idx, (train_loader, val_loader) in enumerate(cv_loaders):
+		if not os.path.exists('../models/' + model_config['name'] + '_cv' + str(cv_idx)):
+			continue
 		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'], focal=model_config['focal'])
 		model.load_state_dict(torch.load('../models/' + model_config['name']+'_cv'+str(cv_idx)))
 		model.cuda()
 		model.eval()
-		thresh = thresh_dict[model_config['name']+'_cv'+str(cv_idx)]['thresh']
+		try:
+			thresh = thresh_dict[model_config['name'] + '_cv' + str(cv_idx)]['thresh']
+		except:
+			thresh = 0.5
 		VAL_IDX.extend(val_idxs[cv_idx])
 
 		for idx, ((rv_raw, lb_raw), x, y) in enumerate(val_loader):

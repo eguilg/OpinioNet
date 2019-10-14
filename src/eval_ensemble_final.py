@@ -52,12 +52,14 @@ def average_result(result, num):
 
 
 def gen_submit(ret, raw):
-	result = pd.DataFrame(columns=['id', 'A', 'O', 'C', 'P'])
+
 	cur_idx = 1
+	result = []
 	for i, opinions in enumerate(ret):
 
 		if len(opinions) == 0:
-			result.loc[result.shape[0]] = {'id': cur_idx, 'A': '_', 'O': '_', 'C': '_', 'P': '_'}
+			result.append([cur_idx, '_', '_', '_', '_'])
+			# result.loc[result.shape[0]] = {'id': cur_idx, 'A': '_', 'O': '_', 'C': '_', 'P': '_'}
 
 		for j, (opn, score) in enumerate(opinions):
 			a_s, a_e, o_s, o_e = opn[0:4]
@@ -72,22 +74,24 @@ def gen_submit(ret, raw):
 				O = raw[i][o_s - 1: o_e]
 			C = ID2LAPTOP[c]
 			P = ID2P[p]
-			result.loc[result.shape[0]] = {'id': cur_idx, 'A': A, 'O': O, 'C': C, 'P': P}
+			# result.loc[result.shape[0]] = {'id': cur_idx, 'A': A, 'O': O, 'C': C, 'P': P}
+			result.append([cur_idx, A, O, C, P])
 		cur_idx += 1
+	result = pd.DataFrame(data=result, columns=['id', 'A', 'O', 'C', 'P'])
 	return result
 
 def gen_label(ret, raw):
-	result = pd.DataFrame(
-		columns=['id', 'AspectTerms', 'A_start', 'A_end', 'OpinionTerms', 'O_start', 'O_end', 'Categories',
-				 'Polarities'])
+
 	cur_idx = 1
+	result = []
 	for i, opinions in enumerate(ret):
 
 		if len(opinions) == 0:
-			result.loc[result.shape[0]] = {'id': cur_idx,
-									'AspectTerms': '_', 'A_start': ' ', 'A_end': ' ',
-									'OpinionTerms': '_', 'O_start': ' ', 'O_end': ' ',
-									'Categories': '_', 'Polarities': '_'}
+			result.append([cur_idx, '_', ' ', ' ', '_', ' ', ' ', '_', '_'])
+			# result.loc[result.shape[0]] = {'id': cur_idx,
+			# 						'AspectTerms': '_', 'A_start': ' ', 'A_end': ' ',
+			# 						'OpinionTerms': '_', 'O_start': ' ', 'O_end': ' ',
+			# 						'Categories': '_', 'Polarities': '_'}
 
 		for j, (opn, score) in enumerate(opinions):
 			a_s, a_e, o_s, o_e = opn[0:4]
@@ -110,11 +114,16 @@ def gen_label(ret, raw):
 				o_e = str(o_e)
 			C = ID2LAPTOP[c]
 			P = ID2P[p]
-			result.loc[result.shape[0]] = {'id': cur_idx,
-									'AspectTerms': A, 'A_start': a_s, 'A_end': a_e,
-									'OpinionTerms': O, 'O_start': o_s, 'O_end': o_e,
-									'Categories': C, 'Polarities': P}
+			# result.loc[result.shape[0]] = {'id': cur_idx,
+			# 						'AspectTerms': A, 'A_start': a_s, 'A_end': a_e,
+			# 						'OpinionTerms': O, 'O_start': o_s, 'O_end': o_e,
+			# 						'Categories': C, 'Polarities': P}
+			result.append([cur_idx, A, a_s, a_e, O, o_s, o_e, C, P])
 		cur_idx += 1
+	result = pd.DataFrame(data=result,
+		columns=['id', 'AspectTerms', 'A_start', 'A_end', 'OpinionTerms', 'O_start', 'O_end', 'Categories',
+				 'Polarities'])
+
 	return result
 
 
@@ -126,6 +135,7 @@ if __name__ == '__main__':
 	parser.add_argument('--rv', type=str, default='../data/TEST/Test_reviews.csv')
 	parser.add_argument('--lb', type=str, required=False)
 	parser.add_argument('--gen_label', action='store_true')
+	parser.add_argument('--skipfold', type=int, default=None)
 	parser.add_argument('--o', type=str, default='Result')
 	parser.add_argument('--bs', type=int, default=64)
 	args = parser.parse_args()
@@ -138,17 +148,21 @@ if __name__ == '__main__':
 	if not osp.exists('../testResults'):
 		os.mkdir('../testResults')
 
-	SUBMIT_DIR = osp.join('../submit', args.o+'_submit.csv')
-	LABEL_DIR = osp.join('../testResults', args.o+'_label.csv')
+	SUBMIT_DIR = args.o
+	LABEL_DIR = args.o
 
 	with open(THRESH_DIR, 'r', encoding='utf-8') as f:
 		thresh_dict = json.load(f)
 
 	WEIGHT_NAMES, MODEL_NAMES, THRESHS = [], [], []
 	for k, v in thresh_dict.items():
-		WEIGHT_NAMES.append(k)
-		MODEL_NAMES.append(v['name'])
-		THRESHS.append(v['thresh'])
+		if v['name'] in PRETRAINED_MODELS:
+			if args.skipfold is not None and 'cv' + str(args.skipfold) not in k:
+				WEIGHT_NAMES.append(k)
+				MODEL_NAMES.append(v['name'])
+				THRESHS.append(v['thresh'])
+
+	print(WEIGHT_NAMES)
 
 	MODELS = list(zip(WEIGHT_NAMES, MODEL_NAMES, THRESHS))
 	# tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODELS['roberta']['path'], do_lower_case=True)
@@ -156,6 +170,7 @@ if __name__ == '__main__':
 	# test_loader = DataLoader(test_dataset, args.bs, collate_fn=test_dataset.batchify, shuffle=False, num_workers=5)
 	ret = None
 	raw = None
+	lb = None
 	num_model = 0
 	for weight_name, model_name, thresh in MODELS:
 		if not osp.isfile('../models/' + weight_name):
@@ -168,6 +183,9 @@ if __name__ == '__main__':
 
 		if not raw:
 			raw = [s[0][0] for s in test_dataset.samples]
+		if not lb and args.lb:
+			lb = [s[0][1] for s in test_dataset.samples]
+
 
 		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'], focal=model_config['focal'])
 		print(weight_name)
@@ -176,12 +194,40 @@ if __name__ == '__main__':
 		ret = accum_result(ret, eval_epoch(model, test_loader, thresh))
 		del model
 	ret = average_result(ret, num_model)
-	ret = OpinioNet.nms_filter(ret, 0.35)
+	ret = OpinioNet.nms_filter(ret, 0.28)
 
 	if args.lb:
+		def f1_score(P, G, S):
+			pr = S / P
+			rc = S / G
+			f1 = 2 * pr * rc / (pr + rc)
+			return f1, pr, rc
+
+
+		def evaluate_sample(gt, pred):
+			gt = set(gt)
+			pred = set(pred)
+			p = len(pred)
+			g = len(gt)
+			s = len(gt.intersection(pred))
+			return p, g, s
+		P, G, S = 0, 0, 0
+		for b in range(len(ret)):
+			gt = lb[b]
+			pred = [x[0] for x in ret[b]]
+			p, g, s = evaluate_sample(gt, pred)
+
+			P += p
+			G += g
+			S += s
+		f1, pr, rc = f1_score(P, G, S)
+		print("f1 %.5f, pr %.5f, rc %.5f" % (f1, pr, rc))
+
+	if args.gen_label:
 		result = gen_label(ret, raw)
 		result.to_csv(LABEL_DIR, header=True, index=False)
+		print(len(result['id'].unique()), result.shape[0])
 	else:
 		result = gen_submit(ret, raw)
 		result.to_csv(SUBMIT_DIR, header=False, index=False)
-	print(len(result['id'].unique()), result.shape[0])
+		print(len(result['id'].unique()), result.shape[0])

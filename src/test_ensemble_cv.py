@@ -170,22 +170,19 @@ if __name__ == '__main__':
 			print(weight_name)
 			model.load_state_dict(weight)
 			model.cuda()
-			thresh = thresh_dict[weight_name]['thresh']
+			try:
+				thresh = thresh_dict[weight_name]['thresh']
+			except:
+				thresh = 0.5
 			cvret = accum_result(cvret, eval_epoch(model, val_loader, thresh))
 			cv_model_num += 1
 			del model
 		cvret = average_result(cvret, cv_model_num)
 		PRED.extend(cvret)
 
-	threshs = list(np.arange(0.1, 0.9, 0.025))
-	best_f1, best_pr, best_rc = 0, 0, 0
-	best_thresh = 0.1
-
-	BEST_PRED = OpinioNet.nms_filter(PRED, 0.3)
-	P, G, S = 0, 0, 0
 	PRED_COPY = copy.deepcopy(PRED)
 
-
+	# P, G, S = 0, 0, 0
 	# BEST_PRED = OpinioNet.nms_filter(PRED_COPY, 0.3)
 	# for b in range(len(PRED_COPY)):
 	# 	gt = LB[b]
@@ -198,6 +195,11 @@ if __name__ == '__main__':
 	# f1, pr, rc = f1_score(P, G, S)
 	# print("f1 %.5f, pr %.5f, rc %.5f, th %.5f" % (f1, pr, rc, 0.3))
 
+	threshs = list(np.arange(0.1, 0.9, 0.025))
+	best_f1, best_pr, best_rc = 0, 0, 0
+	best_thresh = 0.1
+	P, G, S = 0, 0, 0
+	BEST_PRED = PRED_COPY
 	for th in threshs:
 		P, G, S = 0, 0, 0
 		PRED_COPY = copy.deepcopy(PRED)
