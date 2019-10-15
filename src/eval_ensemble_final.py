@@ -135,7 +135,7 @@ if __name__ == '__main__':
 	parser.add_argument('--rv', type=str, default='../data/TEST/Test_reviews.csv')
 	parser.add_argument('--lb', type=str, required=False)
 	parser.add_argument('--gen_label', action='store_true')
-	parser.add_argument('--skipfold', type=int, default=None)
+	parser.add_argument('--labelfold', type=int, default=None)
 	parser.add_argument('--o', type=str, default='Result')
 	parser.add_argument('--bs', type=int, default=64)
 	args = parser.parse_args()
@@ -157,7 +157,7 @@ if __name__ == '__main__':
 	WEIGHT_NAMES, MODEL_NAMES, THRESHS = [], [], []
 	for k, v in thresh_dict.items():
 		if v['name'] in PRETRAINED_MODELS:
-			if args.skipfold is not None and 'cv' + str(args.skipfold) not in k:
+			if args.labelfold is not None and 'cv' + str(args.labelfold) in k:
 				WEIGHT_NAMES.append(k)
 				MODEL_NAMES.append(v['name'])
 				THRESHS.append(v['thresh'])

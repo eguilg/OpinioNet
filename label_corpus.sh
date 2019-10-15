@@ -21,10 +21,10 @@ python eval_ensemble_final.py --gen_label \
                               --bs 64 \
                               --rv ../data/TRAIN/Train_laptop_corpus.csv \
                               --o ../data/TRAIN/Train_laptop_corpus_labels3.csv \
-                              --skipfold 3
+                              --labelfold 3
 
 python eval_ensemble_final.py --gen_label \
                               --bs 64 \
                               --rv ../data/TRAIN/Train_laptop_corpus.csv \
                               --o ../data/TRAIN/Train_laptop_corpus_labels4.csv \
-                              --skipfold 4
+                              --labelfold 4
