@@ -9,6 +9,17 @@ import numpy as np
 
 from collections import Counter
 
+def margin_negsub_bce_with_logits(logits, target, margin=0.1, neg_sub=0.25):
+	y = torch.sigmoid(logits)
+	keep_mask = (torch.abs(target - y) > margin).float()
+	pos_keep = keep_mask * target
+	neg_keep = keep_mask - pos_keep
+	loss_pos = - pos_keep * torch.log(torch.clamp(y, 1e-10))
+	loss_neg = - neg_keep * neg_sub * torch.log(torch.clamp(-y + 1, 1e-10, 1.0))
+	loss = (loss_pos + loss_neg).mean()
+	return loss
+
+
 def focalBCE_with_logits(logits, target, gamma=2):
 	probs = torch.sigmoid(logits)
 	grad = torch.abs(target - probs) ** gamma
@@ -234,7 +245,7 @@ class OpinioNet(BertPreTrainedModel):
 
 		return probs, logits
 
-	def loss(self, preds, targets):
+	def loss(self, preds, targets, neg_sub=False):
 		as_logits, ae_logits, os_logits, oe_logits, obj_logits, c_logits, p_logits = preds
 		as_tgt, ae_tgt, os_tgt, oe_tgt, obj_tgt, c_tgt, p_tgt = targets
 
@@ -262,9 +273,10 @@ class OpinioNet(BertPreTrainedModel):
 			loss += F.cross_entropy(c_logits, c_tgt, ignore_index=-1)
 			loss += F.cross_entropy(p_logits, p_tgt, ignore_index=-1)
 
-		
-		loss += F.binary_cross_entropy_with_logits(obj_logits, obj_tgt)
-		# loss += 4*focalBCE_with_logits(obj_logits, obj_tgt)
+		if neg_sub:
+			loss += margin_negsub_bce_with_logits(obj_logits, obj_tgt)
+		else:
+			loss += margin_negsub_bce_with_logits(obj_logits, obj_tgt, neg_sub=1.0)
 
 		return loss
 

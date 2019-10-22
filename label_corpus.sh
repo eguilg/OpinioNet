@@ -3,19 +3,19 @@ python eval_ensemble_final.py --gen_label \
                               --bs 64 \
                               --rv ../data/TRAIN/Train_laptop_corpus.csv \
                               --o ../data/TRAIN/Train_laptop_corpus_labels0.csv \
-                              --skipfold 0
+                              --labelfold 0
 
 python eval_ensemble_final.py --gen_label \
                               --bs 64 \
                               --rv ../data/TRAIN/Train_laptop_corpus.csv \
                               --o ../data/TRAIN/Train_laptop_corpus_labels1.csv \
-                              --skipfold 1
+                              --labelfold 1
 
 python eval_ensemble_final.py --gen_label \
                               --bs 64 \
                               --rv ../data/TRAIN/Train_laptop_corpus.csv \
                               --o ../data/TRAIN/Train_laptop_corpus_labels2.csv \
-                              --skipfold 2
+                              --labelfold 2
 
 python eval_ensemble_final.py --gen_label \
                               --bs 64 \

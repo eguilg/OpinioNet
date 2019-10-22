@@ -157,7 +157,7 @@ if __name__ == '__main__':
 	WEIGHT_NAMES, MODEL_NAMES, THRESHS = [], [], []
 	for k, v in thresh_dict.items():
 		if v['name'] in PRETRAINED_MODELS:
-			if args.labelfold is not None and 'cv' + str(args.labelfold) in k:
+			if args.labelfold is None or 'cv' + str(args.labelfold) in k:
 				WEIGHT_NAMES.append(k)
 				MODEL_NAMES.append(v['name'])
 				THRESHS.append(v['thresh'])

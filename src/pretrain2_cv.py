@@ -1,6 +1,6 @@
 import os
 from pytorch_pretrained_bert import BertTokenizer
-from dataset import get_pretrain_2_laptop_loaders_cv, get_pretrain2_loaders_cv
+from dataset import get_pretrain_2_laptop_fake_loaders_cv, get_pretrain2_loaders_cv, get_data_loaders_cv
 from model import OpinioNet
 
 import torch
@@ -30,7 +30,7 @@ def evaluate_sample(gt, pred):
 	return p, g, s
 
 
-def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, scheduler=None):
+def train_epoch(model, makeup_loader, laptop_fake_train, laptop_gt_train, corpus_loader, optimizer, scheduler=None):
 	model.train()
 
 	cum_lm_loss = 0
@@ -42,12 +42,13 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 	P_makeup, G_makeup, S_makeup = 0, 0, 0
 	P_laptop, G_laptop, S_laptop = 0, 0, 0
 	step = 0
-	epoch_len = max(len(makeup_loader), len(corpus_loader), len(laptop_loader))
+	epoch_len = max(len(makeup_loader), len(corpus_loader), len(laptop_fake_train))
 	pbar = tqdm(range(epoch_len))
 
 	corpus_iter = iter(corpus_loader)
 	makeup_iter = iter(makeup_loader)
-	laptop_iter = iter(laptop_loader)
+	laptop_fake_iter = iter(laptop_fake_train)
+	laptop_gt_iter = iter(laptop_gt_train)
 
 	for _ in pbar:
 		if step == epoch_len:
@@ -119,20 +120,67 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 			a = makeup_logits.pop();
 			del a
 
-		############### laptop ##################
+		############### laptop fake ##################
 		try:
-			laptop_raw, laptop_x, laptop_y = next(laptop_iter)
+			laptop_raw, laptop_x, laptop_y = next(laptop_fake_iter)
 		except StopIteration:
-			laptop_iter = iter(laptop_loader)
-			laptop_raw, laptop_x, laptop_y = next(laptop_iter)
+			laptop_fake_iter = iter(laptop_fake_train)
+			laptop_raw, laptop_x, laptop_y = next(laptop_fake_iter)
 
 		laptop_rv_raw, laptop_lb_raw = laptop_raw
 		laptop_x = [item.cuda() for item in laptop_x]
 		laptop_y = [item.cuda() for item in laptop_y]
 
 		laptop_probs, laptop_logits = model.forward(laptop_x, type='laptop')
-		loss = model.loss(laptop_logits, laptop_y)
+		loss = model.loss(laptop_logits, laptop_y, neg_sub=True)
 
+		# optimizer.zero_grad()
+		# loss.backward()
+		# optimizer.step()
+		# if scheduler:
+		# 	scheduler.step()
+
+		laptop_pred = model.gen_candidates(laptop_probs)
+		laptop_pred = model.nms_filter(laptop_pred, 0.1)
+
+		for b in range(len(laptop_pred)):
+			gt = laptop_lb_raw[b]
+			pred = [x[0] for x in laptop_pred[b]]
+			p, g, s = evaluate_sample(gt, pred)
+			P_laptop += p
+			G_laptop += g
+			S_laptop += s
+
+		cum_laptop_loss += loss.data.cpu().numpy() * len(laptop_rv_raw)
+		total_laptop_sample += len(laptop_rv_raw)
+		while laptop_x:
+			a = laptop_x.pop();
+			del a
+		while laptop_y:
+			a = laptop_y.pop();
+			del a
+
+		while laptop_probs:
+			a = laptop_probs.pop();
+			del a
+			a = laptop_logits.pop();
+			del a
+
+		############### laptop gt ##################
+		try:
+			laptop_raw, laptop_x, laptop_y = next(laptop_gt_iter)
+		except StopIteration:
+			laptop_gt_iter = iter(laptop_gt_train)
+			laptop_raw, laptop_x, laptop_y = next(laptop_gt_iter)
+
+		laptop_rv_raw, laptop_lb_raw = laptop_raw
+		laptop_x = [item.cuda() for item in laptop_x]
+		laptop_y = [item.cuda() for item in laptop_y]
+
+		laptop_probs, laptop_logits = model.forward(laptop_x, type='laptop')
+		laptop_gt_loss = model.loss(laptop_logits, laptop_y)
+		loss += laptop_gt_loss
+		loss /= 2
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step()
@@ -150,7 +198,7 @@ def train_epoch(model, makeup_loader, laptop_loader, corpus_loader, optimizer, s
 			G_laptop += g
 			S_laptop += s
 
-		cum_laptop_loss += loss.data.cpu().numpy() * len(laptop_rv_raw)
+		cum_laptop_loss += laptop_gt_loss.data.cpu().numpy() * len(laptop_rv_raw)
 		total_laptop_sample += len(laptop_rv_raw)
 		while laptop_x:
 			a = laptop_x.pop();
@@ -260,16 +308,25 @@ if __name__ == '__main__':
 
 	tokenizer = BertTokenizer.from_pretrained(model_config['path'], do_lower_case=True)
 	makeup_loader, makeup_val_loader, corpus_loader = get_pretrain2_loaders_cv(tokenizer, batch_size=args.bs)
-	laptop_cv_loaders = get_pretrain_2_laptop_loaders_cv(tokenizer, batch_size=args.bs)
+
+	laptop_gt_cv_loaders = get_data_loaders_cv(rv_path='../data/TRAIN/Train_laptop_reviews.csv',
+									 lb_path='../data/TRAIN/Train_laptop_labels.csv',
+									 tokenizer=tokenizer,
+									 batch_size=args.bs,
+									 type='laptop',
+									 folds=5)
+
+	laptop_fake_cv_loaders = get_pretrain_2_laptop_fake_loaders_cv(tokenizer, batch_size=args.bs)
 	BEST_THRESHS = [0.1] * 5
 	BEST_F1 = [0] * 5
-	for cv_idx, (laptop_train_loader, laptop_val_loader) in enumerate(laptop_cv_loaders):
+	for cv_idx, (laptop_fake_train) in enumerate(laptop_fake_cv_loaders):
+		laptop_gt_train, laptop_gt_val = laptop_gt_cv_loaders[cv_idx]
 
 		model = OpinioNet.from_pretrained(model_config['path'], version=model_config['version'])
 		model.cuda()
 		optimizer = Adam(model.parameters(), lr=model_config['lr'])
 		scheduler = GradualWarmupScheduler(optimizer,
-										   total_epoch=2 * max(len(makeup_loader), len(laptop_train_loader), len(corpus_loader)))
+										   total_epoch=2 * max(len(makeup_loader), len(laptop_fake_train), len(corpus_loader)))
 		best_val_f1 = 0
 		best_val_loss = float('inf')
 		no_imporve = 0
@@ -278,7 +335,7 @@ if __name__ == '__main__':
 			print('Epoch [%d/%d] train:' % (e, EP))
 			makeup_loss, makeup_f1, makeup_pr, makeup_rc, \
 			laptop_loss, laptop_f1, laptop_pr, laptop_rc, \
-			total_lm_loss = train_epoch(model, makeup_loader, laptop_train_loader, corpus_loader, optimizer, scheduler)
+			total_lm_loss = train_epoch(model, makeup_loader, laptop_fake_train, laptop_gt_train, corpus_loader, optimizer, scheduler)
 			print("makeup_train: loss %.5f, f1 %.5f, pr %.5f, rc %.5f" % (makeup_loss, makeup_f1, makeup_pr, makeup_rc))
 			print("laptop_train: loss %.5f, f1 %.5f, pr %.5f, rc %.5f" % (laptop_loss, laptop_f1, laptop_pr, laptop_rc))
 			print("lm loss %.5f", total_lm_loss)
@@ -289,7 +346,7 @@ if __name__ == '__main__':
 			val_loss, val_f1, val_pr, val_rc, best_th))
 
 			print('Epoch [%d/%d] laptop eval:' % (e, EP))
-			val_loss, val_f1, val_pr, val_rc, best_th = eval_epoch(model, laptop_val_loader, type='laptop')
+			val_loss, val_f1, val_pr, val_rc, best_th = eval_epoch(model, laptop_gt_val, type='laptop')
 			print("laptop_val: loss %.5f, f1 %.5f, pr %.5f, rc %.5f, thresh %.2f" % (
 			val_loss, val_f1, val_pr, val_rc, best_th))
 
